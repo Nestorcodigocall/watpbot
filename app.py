@@ -3,8 +3,6 @@ import os
 from openai import OpenAI
 
 app = Flask(__name__)
-
-# Cargar tu API Key desde las variables de entorno
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route("/")
@@ -19,9 +17,8 @@ def webhook():
     if not user_message or not sender:
         return jsonify({"error": "Faltan parámetros"}), 400
 
-    # Generar respuesta desde GPT-4-turbo
     completion = client.chat.completions.create(
-        model="gpt-4o",  # Puedes usar gpt-4o o gpt-3.5-turbo
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "Eres un asistente por WhatsApp para atención al cliente."},
             {"role": "user", "content": user_message}
@@ -29,7 +26,11 @@ def webhook():
     )
 
     response_text = completion.choices[0].message.content.strip()
-
     return jsonify({"respuesta": response_text}), 200
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host="0.0.0.0", port=port)
+
 
 
