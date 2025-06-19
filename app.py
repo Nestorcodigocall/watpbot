@@ -1,48 +1,85 @@
 from flask import Flask, request
-import openai
-import requests
+from openai import OpenAI
 import os
-
-openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
+# Inicializa el cliente de OpenAI con tu clave (definida como variable de entorno)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+@app.route("/")
+def index():
+    return "🤖 Bot de WhatsApp activo"
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.form
-    msg_body = data.get('Body')
-    msg_type = data.get('MediaContentType0')
-    from_number = data.get('From')
+    try:
+        mensaje = request.form.get("Body", "")
+        numero = request.form.get("From", "")
 
-    # Si es un audio
-    if msg_type == 'audio/ogg':
-        audio_url = data.get('MediaUrl0')
-        audio_response = requests.get(audio_url)
-        with open("audio.ogg", "wb") as f:
-            f.write(audio_response.content)
+        print(f"📩 Mensaje recibido: {mensaje} de {numero}")
 
-        audio_file = open("audio.ogg", "rb")
-        transcript = openai.Audio.transcribe("whisper-1", audio_file)
-        user_message = transcript["text"]
-    else:
-        user_message = msg_body
+        # Enviar mensaje a GPT
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Eres un asistente de WhatsApp para atención al cliente."},
+                {"role": "user", "content": mensaje}
+            ]
+        )
 
-    # Generar respuesta con GPT
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "Eres una asistente virtual de atención al cliente y ventas."},
-            {"role": "user", "content": user_message}
-        ]
-    )
-    reply = response.choices[0].message["content"]
+        respuesta = completion.choices[0].message.content.strip()
+        print(f"🤖 Respuesta generada: {respuesta}")
 
-    return f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>Hola 👋, soy la asistente de Tu Empresa. ¿En qué puedo ayudarte hoy?
+        # Devolver respuesta (útil para pruebas manuales con curl/postman)
+        return respuesta, 200
 
-{reply}</Message>
-</Response>"""
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return "Error interno del servidor", 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(debug=True)
+from flask import Flask, request
+from openai import OpenAI
+import os
+
+app = Flask(__name__)
+
+# Inicializa el cliente de OpenAI con tu clave (definida como variable de entorno)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+@app.route("/")
+def index():
+    return "🤖 Bot de WhatsApp activo"
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    try:
+        mensaje = request.form.get("Body", "")
+        numero = request.form.get("From", "")
+
+        print(f"📩 Mensaje recibido: {mensaje} de {numero}")
+
+        # Enviar mensaje a GPT
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Eres un asistente de WhatsApp para atención al cliente."},
+                {"role": "user", "content": mensaje}
+            ]
+        )
+
+        respuesta = completion.choices[0].message.content.strip()
+        print(f"🤖 Respuesta generada: {respuesta}")
+
+        # Devolver respuesta (útil para pruebas manuales con curl/postman)
+        return respuesta, 200
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return "Error interno del servidor", 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
